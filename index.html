@@ -1,0 +1,247 @@
+<html>
+<link href="css/app.css" rel="stylesheet" />
+<script src="./Octad.js"></script>
+<script src="two.min.js"></script>
+<script type="text/javascript" async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS_CHTML,Safe">
+</script>
+
+<body>
+
+    <h2>Miracle Octad Generator</h2>
+
+    The Miracle Octad Generator (MOG) is a tool for generating octads (sets of size 8) from a given 5 points. This is useful for anyone looking into the \(S(5,8,24)\) Steinr System. Just a reminder of what that means - a \(S(5,8,24)\) Steiner System is a
+    collection of 24 elements, and a collection of 8-element subsets of this, such that given any 5 elements we can always find exactly one 8-element subset.
+    <br> <br> Even though it can be proven that such a construct exists, creating it by hand is not simple. e.g. label the 24 points \(0,1,2,3,...,23\), and begin writing down 8-element subsets of this (759 of them in total), which we will call octads,
+    such that any subset of 5 elements exist in one and only one of these octads.</br>
+    Using the MOG, we don't need to do any of that. Just look at the 4x6 grid below. Click on 5 points to select them (click again to deselect), and the MOG will generate the other 3 points of the unique octad containing those 5 points.
+    <br><br> This may not seem particularly interesting, but it is a good way to generate the octads of this particular Steiner System. The Steiner System itself is quite special as the permutation group is none other than the <i>Mathieu Group</i>, \(M_{24}\).
+    This group permutates the Octads transitively, and therefore is 5-transitive on the points of \(S(5,8,24)\). In fact, \(M_{24}\) and its cousin \(M_{12}\) are the ONLY 5-transitive groups in existence, not counting alternaitng and symmetric groups.
+    So in some vague sense this steiner system is among the most symmetrical geometric objects to exist.
+    <div> <button class="btn" onclick="reset()">reset</button>
+    </div>
+    <div class="text-div" id="octad-text-div">No Octad</div>
+
+    <div class="canvasdiv" id="octads-m24" width="1600px" height="1000px"> </div>
+    <hr>
+    <h2>The Kitten</h2>
+    There also exists a tool for finding <i>hexads</i> in the closely related \(S(5,6,12)\) Steiner System. This is known as the <i>kitten</i>. It should be noted that the full automorphism group of \(S(5,6,12)\) is known as \(M_{12}\), and is this is
+    a <i>sporadic group</i>, and a subgroup of \(M_{24}\), of order 95040.
+    <div> <button class="btn" onclick="resetHexadButton()">reset</button></div>
+    </div>
+
+    <div class="text-div" id="hexad-text-div">No Hexad</div>
+    <div class="canvasdiv" id="hexads-m12" width="1600px" height="1000px"> </div>
+</body>
+
+</html>
+
+<script>
+    DEFAULT_COLOR = 'rgb( 20, 100 , 255)';
+    SELECTED_COLOR = 'rgb( 244, 210 , 5)';
+    let hexadSelected = [];
+    let selected = [];
+    var elem = document.getElementById('octads-m24');
+    var params = {
+        width: 2000,
+        height: 600
+    };
+    var two = new Two(params).appendTo(elem);
+
+    var elem2 = document.getElementById('hexads-m12');
+    var twoKitten = new Two(params).appendTo(elem2);
+
+    function reset() {
+        selected = [];
+        for (let czi = 0; czi < 24; czi++) {
+            cells[czi].fill = DEFAULT_COLOR;
+        }
+        two.update();
+        var octadTextDiv = document.getElementById('octad-text-div');
+        octadTextDiv.textContent = "No Octad";
+    }
+
+    function findTheOctad(indices) {
+        let arr = [0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0
+        ];
+        for (let si = 0; si < indices.length; si++) {
+            arr[indices[si]] = 1;
+        }
+        let octad = getOctad(arr);
+        let res = [];
+        for (let si = 0; si < 24; si++) {
+            if (octad[si] === 1) {
+                res.push(si);
+            }
+        }
+        return res;
+    }
+
+    function findTheHexad(indices) {
+        let pafs = [0, 0, 0];
+        let pts = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+        for (let si = 0; si < indices.length; si++) {
+            let idx = indices[si];
+            if (idx < 3) {
+                pafs[idx] = 1;
+            } else {
+                pts[idx - 3] = 1;
+            }
+        }
+        let hexad = findHexad(pafs, pts);
+
+        return hexad;
+    }
+
+    function clickbutton() {
+
+        cells = []
+        let octadText = new Two.Text("24 points of S(5,8,24)", 200, 50);
+        octadText.size = 25;
+        two.add(octadText);
+        for (let k = 0; k < 3; k++) {
+            for (let i = 0; i < 2; i++) {
+                for (let j = 0; j < 4; j++) {
+                    let rect = two.makeRectangle(k * 200 + 100 * i + 45, 100 * j + 45 + 100 + 10, 90, 90);
+                    rect.fill = DEFAULT_COLOR;
+                    rect.opacity = 1.0;
+                    rect.noStroke();
+                    cells.push(rect);
+
+                }
+            }
+        }
+
+
+        // Don't forget to tell two to render everything
+        // to the screen
+        two.update();
+        for (let czi = 0; czi < 24; czi++) {
+
+            cells[czi]._renderer.elem.addEventListener('click', function(e) {
+
+                if (selected.includes(czi)) {
+                    const index = selected.indexOf(czi);
+                    if (index > -1) {
+                        selected.splice(index, 1);
+                        cells[czi].fill = DEFAULT_COLOR;
+                    }
+                } else {
+                    if (selected.length < 5) {
+
+
+                        selected.push(czi);
+                        cells[czi].fill = SELECTED_COLOR;
+                        if (selected.length === 5) {
+                            let octadIndices = findTheOctad(selected);
+                            selected = []
+                            octadIndices.forEach(a => {
+                                selected.push(a);
+                                cells[a].fill = SELECTED_COLOR;
+                            })
+                            var octadTextDiv = document.getElementById('octad-text-div');
+                            octadTextDiv.textContent = "Octad: " + octadIndices;
+                        }
+                    }
+                }
+                // to the screen
+                two.update();
+            }, false);
+        }
+        var a = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1];
+        var octad = getOctad(a);
+        var b = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1];
+        findTetrads(b)
+        var c = [1, 0, 0, 0, 0, 0, 0, 0, 1];
+        var cp = [1, 1, 1];
+        cres = findHexad(cp, c);
+    }
+
+
+    function clickHexadButton() {
+        hexadSelected = []
+        kittenCells = []
+        let infinityText = new Two.Text("Points at infinity", 100, 50);
+        let affineText = new Two.Text("Affine Plane", 600, 50);
+        infinityText.size = 25;
+        affineText.size = 25;
+        twoKitten.add(infinityText);
+        twoKitten.add(affineText);
+        for (let i = 0; i < 3; i++) {
+            let rect = twoKitten.makeRectangle(100 * i + 45, 100 + 45, 90, 90);
+            rect.fill = DEFAULT_COLOR;
+            rect.opacity = 1.0;
+            rect.noStroke();
+            kittenCells.push(rect);
+        }
+        for (let i = 0; i < 3; i++) {
+            for (let j = 0; j < 3; j++) {
+                let rect = twoKitten.makeRectangle(400 + 100 * i + 45, 100 + 100 * j + 45, 90, 90);
+                rect.fill = DEFAULT_COLOR;
+                rect.opacity = 1.0;
+                rect.noStroke();
+                kittenCells.push(rect);
+            }
+        }
+
+        twoKitten.update();
+        for (let czi = 0; czi < kittenCells.length; czi++) {
+
+            kittenCells[czi]._renderer.elem.addEventListener('click', function(e) {
+
+                if (hexadSelected.includes(czi)) {
+                    const index = hexadSelected.indexOf(czi);
+                    if (index > -1) {
+                        hexadSelected.splice(index, 1);
+                        kittenCells[czi].fill = DEFAULT_COLOR;
+                    }
+                } else {
+                    if (hexadSelected.length < 5) {
+
+                        hexadSelected.push(czi);
+                        kittenCells[czi].fill = SELECTED_COLOR;
+                        if (hexadSelected.length === 5) {
+                            let [pts, pafs] = findTheHexad(hexadSelected);
+
+                            hexadSelected = []
+                            for (let h = 0; h < pts.length; h++) {
+                                if (pts[h] === 1) {
+                                    kittenCells[h + 3].fill = SELECTED_COLOR;
+                                    hexadSelected.push(h + 3);
+                                }
+                            }
+                            for (let h = 0; h < pafs.length; h++) {
+                                if (pafs[h] === 1) {
+                                    kittenCells[h].fill = SELECTED_COLOR;
+                                    hexadSelected.push(h);
+                                }
+                            }
+                            var hexadTextDiv = document.getElementById('hexad-text-div');
+                            hexadTextDiv.textContent = "" + hexadSelected;
+                        }
+                    }
+                }
+                // to the screen
+                twoKitten.update();
+            }, false);
+        }
+    }
+
+    function resetHexadButton() {
+
+        for (let i = 0; i < kittenCells.length; i++) {
+            kittenCells[i].fill = DEFAULT_COLOR;
+
+        }
+        hexadSelected = []
+        twoKitten.update();
+        var hexadTextDiv = document.getElementById('hexad-text-div');
+        hexadTextDiv.textContent = "No Hexad";
+    }
+
+    window.onload = function() {
+        clickbutton();
+        clickHexadButton();
+    };
+</script>
